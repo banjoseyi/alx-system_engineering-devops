@@ -1,33 +1,49 @@
 #!/usr/bin/python3
-""" recursive function that queries the Reddit API """
+"""Queries the Reddit API and
+returns a list containing the
+titles of all hot articles for
+a given subreddit.
+
+If no results are found for the
+given subreddit, the function
+should return None.
+"""
 import requests
-import sys
-after = None
 
 
-def recurse(subreddit, hot_list=[]):
-    """     Args:
-        subreddit: subreddit name
-        hot_list: list of hot titles in subreddit
-        after: last hot_item appended to hot_list
-    Returns:
-        a list containing the titles of all hot articles for the subreddit
-        or None if queried subreddit is invalid """
-    global after
-    headers = {'User-Agent': 'xica369'}
-    url = "https://www.reddit.com/r/{}/hot.json".format(subreddit)
-    parameters = {'after': after}
-    response = requests.get(url, headers=headers, allow_redirects=False,
-                            params=parameters)
+def recurse(subreddit, hot_list=[], after=''):
+    """Returns a list containing the titles of all
+    hot articles for a given subreddit.
+    """
+    # Set the Default URL strings
+    base_url = 'https://www.reddit.com'
+    api_uri = '{base}/r/{subreddit}/hot.json'.format(base=base_url,
+                                                     subreddit=subreddit)
 
-    if response.status_code == 200:
-        next_ = response.json().get('data').get('after')
-        if next_ is not None:
-            after = next_
-            recurse(subreddit, hot_list)
-        list_titles = response.json().get('data').get('children')
-        for title_ in list_titles:
-            hot_list.append(title_.get('data').get('title'))
+    # Set an User-Agent
+    user_agent = {'User-Agent': 'Python/requests'}
+
+    # Set the Query Strings to Request
+    payload = {'after': after, 'limit': '100'}
+
+    # Get the Response of the Reddit API
+    res = requests.get(api_uri, headers=user_agent,
+                       params=payload, allow_redirects=False)
+
+    # Checks if the subreddit is invalid
+    if res.status_code == 200:
+        res = res.json()
+        hot_posts = res.get('data').get('children')
+        after = res.get('data').get('after')
+
+        # Print each hot post title
+        for post in hot_posts:
+            hot_list.append(post.get('data').get('title'))
+
+        # Get the next page of hot posts
+        if after is not None:
+            recurse(subreddit, hot_list, after)
+
         return hot_list
-    else:
-        return (None)
+
+    return None
